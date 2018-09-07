@@ -475,6 +475,7 @@ var _loginCallback = function (status, msg, conn) {
         var handleMessage = function (msginfo) {
             var delivery = msginfo.getElementsByTagName('delivery');
             var acked = msginfo.getElementsByTagName('acked');
+            var recall = msginfo.getElementsByTagName('recall');
             if (delivery.length) {
                 conn.handleDeliveredMessage(msginfo);
                 return true;
@@ -483,6 +484,10 @@ var _loginCallback = function (status, msg, conn) {
                 conn.handleAckedMessage(msginfo);
                 return true;
             }
+            if (recall.length) {
+                conn.handleRecallMessage(msginfo);
+                return true;
+		    }
             var type = _parseMessageType(msginfo);
             switch (type) {
                 case "received":
@@ -818,6 +823,7 @@ connection.prototype.listen = function (options) {
     this.onOnline = options.onOnline || _utils.emptyfn;
     this.onConfirmPop = options.onConfirmPop || _utils.emptyfn;
     this.onCreateGroup = options.onCreateGroup || _utils.emptyfn;
+    this.onRecallMessage = options.onRecallMessage || _utils.emptyfn;
     //for WindowSDK start
     this.onUpdateMyGroupList = options.onUpdateMyGroupList || _utils.emptyfn;
     this.onUpdateMyRoster = options.onUpdateMyRoster || _utils.emptyfn;
@@ -871,6 +877,110 @@ connection.prototype.sendReceiptsMessage = function (options) {
 connection.prototype.cacheReceiptsMessage = function (options) {
     this.sendQueue.push(options);
 };
+
+function recallMessage (options) {
+
+    if (!options.mid || !options.to) {
+        console.error("[mid] or [to] is not specified")
+        return
+    }
+
+    var id = this.getUniqueId();
+        var appKey = this.context.appKey;
+        var toJid = appKey + '_' + options.to + '@' + this.domain;
+
+    if (options.group) {
+        toJid = this._getGroupJid(options.to);
+    }
+
+    var dom = $msg({
+        from: this.context.jid || '',
+        to: toJid,
+        id: id,
+        type: options.group ? "groupchat" : "chat"
+    }).c('recall', {
+        xmlns: 'urn:xmpp:recall',
+        id: options.mid || ''
+    });
+    
+    this.sendCommand(dom.tree());
+    
+    // 设置回调函数
+    var callbacks = {
+        success: options.success || function() {},
+        fail: options.fail || function() {}
+    };
+    
+    recallMessage._callbacks[options.mid] = callbacks
+    
+    _msgHash[id] = {msg: {}};
+    _msgHash[id].msg.success = callbacks.success;
+    _msgHash[id].msg.fail = callbacks.fail;
+    
+    // 6s如果未调用成功，则认为失败
+    // NOTICE: 此处的失败为撤回消息的发送失败，并非撤回失败的回调
+    setTimeout(function () {
+        if (typeof _msgHash !== 'undefined' && _msgHash[id]) {
+            _msgHash[id].msg.fail instanceof Function
+            && _msgHash[id].msg.fail(id);
+            delete _msgHash[id];
+        }
+    }, 6000);
+}
+
+recallMessage._callbacks = {};
+
+/**
+ * 消息撤回
+ * @param {Object} options -
+ * @public
+ */
+connection.prototype.recallMessage = recallMessage;
+
+/**
+ * 处理recall消息
+ * @param {Object} message -
+ * @private
+ */
+connection.prototype.handleRecallMessage = function(message) {
+
+    // var id = message.id;
+    var body = message.getElementsByTagName('recall')[0];
+    var mid = body.id;
+    var callback = recallMessage._callbacks[mid];
+    var error = message.getElementsByTagName('error');
+
+    // 根据消息格式解析有没有错误信息
+    if (error && error.length) {
+        var text = error[0].getElementsByTagName('text');
+        var errorMsg = '';
+        if (text.length) {
+            errorMsg = text[0].childNodes[0].nodeValue;
+        }
+        if (callback && callback.fail) {
+            callback.fail({
+                mid: mid,
+                code: error[0].getAttribute("code"),
+                errorMsg: errorMsg
+            });
+            recallMessage._callbacks[mid] = null;
+            delete recallMessage._callbacks[mid];
+        }
+    } else {
+    
+        // 没有错误，此消息为撤回成功通知
+        var fromJid = message.getAttribute("from"),
+            from = _parseNameFromJidFn(fromJid, this.context.domain);
+    
+    var recallMsg = {mid: mid, from: from, type: "chat"};
+    
+    if (fromJid.indexOf(".conference") > -1) {
+        recallMsg.type = "groupchat";
+    }
+    
+        this.onRecallMessage(recallMsg);
+    }
+}
 
 connection.prototype.getStrophe = function () {
     if (location.protocol != 'https:' && this.isHttpDNS) {
