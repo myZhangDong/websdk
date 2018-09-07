@@ -10,7 +10,8 @@ var _ = require('underscore');
 
 var Strophe = window.Strophe
 var isStropheLog;
-var stropheConn = null
+var stropheConn = null;
+var mr_cache = {};
 
 window.URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
 
@@ -1633,7 +1634,7 @@ connection.prototype.handleIqRoster = function (e) {
     return true;
 };
 
-connection.prototype.handleMessage = function (msginfo) {
+connection.prototype.handleMessage = function (msginfo, ignoreCallback) {
     var self = this;
     if (this.isClosed()) {
         return;
@@ -1734,7 +1735,7 @@ connection.prototype.handleMessage = function (msginfo) {
                         msg.error = errorBool;
                         msg.errorText = errorText;
                         msg.errorCode = errorCode;
-                        this.onEmojiMessage(msg);
+                        !ignoreCallback && this.onEmojiMessage(msg);
                     } else {
                         var msg = {
                             id: id
@@ -1749,7 +1750,7 @@ connection.prototype.handleMessage = function (msginfo) {
                         msg.error = errorBool;
                         msg.errorText = errorText;
                         msg.errorCode = errorCode;
-                        this.onTextMessage(msg);
+                        !ignoreCallback && this.onTextMessage(msg);
                     }
                     break;
                 case 'img':
@@ -1782,7 +1783,7 @@ connection.prototype.handleMessage = function (msginfo) {
                     msg.error = errorBool;
                     msg.errorText = errorText;
                     msg.errorCode = errorCode;
-                    this.onPictureMessage(msg);
+                    !ignoreCallback && this.onPictureMessage(msg);
                     break;
                 case 'audio':
                     var msg = {
@@ -1805,7 +1806,7 @@ connection.prototype.handleMessage = function (msginfo) {
                     msg.error = errorBool;
                     msg.errorText = errorText;
                     msg.errorCode = errorCode;
-                    this.onAudioMessage(msg);
+                    !ignoreCallback && this.onAudioMessage(msg);
                     break;
                 case 'file':
                     var msg = {
@@ -1826,7 +1827,7 @@ connection.prototype.handleMessage = function (msginfo) {
                     msg.error = errorBool;
                     msg.errorText = errorText;
                     msg.errorCode = errorCode;
-                    this.onFileMessage(msg);
+                    !ignoreCallback && this.onFileMessage(msg);
                     break;
                 case 'loc':
                     var msg = {
@@ -1844,7 +1845,7 @@ connection.prototype.handleMessage = function (msginfo) {
                     msg.error = errorBool;
                     msg.errorText = errorText;
                     msg.errorCode = errorCode;
-                    this.onLocationMessage(msg);
+                    !ignoreCallback && this.onLocationMessage(msg);
                     break;
                 case 'video':
                     var msg = {
@@ -1865,7 +1866,7 @@ connection.prototype.handleMessage = function (msginfo) {
                     msg.error = errorBool;
                     msg.errorText = errorText;
                     msg.errorCode = errorCode;
-                    this.onVideoMessage(msg);
+                    !ignoreCallback && this.onVideoMessage(msg);
                     break;
                 case 'cmd':
                     var msg = {
@@ -1880,11 +1881,11 @@ connection.prototype.handleMessage = function (msginfo) {
                     msg.error = errorBool;
                     msg.errorText = errorText;
                     msg.errorCode = errorCode;
-                    this.onCmdMessage(msg);
+                    !ignoreCallback && this.onCmdMessage(msg);
                     break;
             }
             ;
-            if (self.delivery) {
+            if (self.delivery && !ignoreCallback) {
                 var msgId = self.getUniqueId();
                 var bodyId = msg.id;
                 var deliverMessage = new WebIM.message('delivery', msgId);
@@ -1893,6 +1894,11 @@ connection.prototype.handleMessage = function (msginfo) {
                     , to: msg.from
                 });
                 self.send(deliverMessage.body);
+            }
+            
+            if (ignoreCallback) {
+                msg.message_type = type
+                return msg
             }
         } catch (e) {
             this.onError({
@@ -2515,6 +2521,159 @@ connection.prototype.clear = function () {
         this.onError(message);
     }
 };
+
+/**
+ * 获取对话历史消息
+ * @param {Object} options
+ * @param {String} options.queue
+ * @param {Function} options.success
+ * @param {Funciton} options.fail
+ */
+connection.prototype.fetchHistoryMessages = function(options) {
+    var conn = this
+    if (!options.queue) {
+        conn.onError({
+            type: "",
+            msg: "queue is not specified"
+        });
+        return;
+    }
+
+    var count = options.count || 20
+
+    function _readCacheMessages() {
+        conn._fetchMessages({
+            count: count,
+            isGroup: options.isGroup ? true: false,
+            queue: options.queue,
+            success: function(data) {
+                var length = data.msgs.length
+                if (length >= count || data.is_last) {
+                    options.success(_utils.reverse(data.msgs.splice(0, count)))
+                } else {
+                    _readCacheMessages()
+                }
+            }
+        })
+    }
+    _readCacheMessages()
+};
+
+/**
+ * 获取对话历史消息
+ * @param {Object} options
+ * @param {String} options.queue
+ * @param {Function} options.success
+ * @param {Funciton} options.fail
+ */
+connection.prototype._fetchMessages = function(options) {
+    var conn = this,
+        token = options.accessToken || this.context.accessToken
+    
+    if (!_utils.isCanSetRequestHeader) {
+        conn.onError({
+            type: _code.WEBIM_CONNCTION_NOT_SUPPORT_CHATROOM_ERROR
+        });
+        return;
+    }
+
+    if (token) {
+        var apiUrl = this.apiUrl;
+        var appName = this.context.appName;
+        var orgName = this.context.orgName;
+
+        if (!appName || !orgName) {
+            conn.onError({
+                type: _code.WEBIM_CONNCTION_AUTH_ERROR
+            });
+            return;
+        }
+
+        if (!options.queue) {
+            conn.onError({
+                type: "",
+                msg: "queue is not specified"
+            });
+            return;
+        }
+
+        var queue = options.queue
+        var _dataQueue = mr_cache[queue] || (mr_cache[queue] = {msgs: []})
+    
+        var suc = function (res, xhr) {
+            
+            if (res && res.data) {
+                var data = res.data,
+                    msgs = data.msgs, 
+                    length = msgs.length;
+                
+                _dataQueue.is_last = data.is_last;
+                _dataQueue.next_key = data.next_key;
+                
+                for (var i = 0; i < length; i++) {
+                    
+                    // 将xml消息字符串转成xml对象
+                    var xmlMsg = Strophe.xmlHtmlNode(msgs[i]).getElementsByTagName("message")[0];
+
+                    // 将xml对象转换成json消息，true参数，只会消息进行处理，不触发事件
+                    var msgObj = conn.handleMessage(xmlMsg, true)
+                    msgObj && _dataQueue.msgs.push(msgObj); 
+                }
+
+                typeof options.success === 'function' && options.success(_dataQueue);
+            }
+        };
+
+        var error = function (res, xhr, msg) {
+            if (res.error && res.error_description) {
+                conn.onError({
+                    type: _code.WEBIM_CONNCTION_LOAD_CHATROOM_ERROR,
+                    msg: res.error_description,
+                    data: res,
+                    xhr: xhr
+                });
+            }
+        };
+
+        var userId = this.context.userId;    
+        var start = -1
+        
+        // 无历史消息或者缓存消息足够不再加载
+        if (_dataQueue.msgs.length >= options.count || _dataQueue.is_last) {
+            typeof options.success === 'function' && options.success(_dataQueue);
+            return;
+        }
+        
+        // 根据上一次拉取返回的last_key 进行本次消息拉取
+        if (_dataQueue && _dataQueue.next_key) {
+            start = _dataQueue.next_key
+        }
+
+        var suffix = options.isGroup ? "@conference.easemob.com" : "@easemob.com";
+        var data = {
+            queue: queue + suffix,
+            start: start,
+            end: -1
+        };
+ 
+        var opts = {
+            url: apiUrl + '/' + orgName + '/' + appName + '/users/' + userId + '/messageroaming',
+            dataType: 'json',
+            type: 'POST',
+            headers: {'Authorization': 'Bearer ' + token},
+            data: JSON.stringify(data),
+            success: suc || _utils.emptyfn,
+            error: error || _utils.emptyfn
+        };
+
+        _utils.ajax(opts);
+
+    }  else {
+        conn.onError({
+            type: _code.WEBIM_CONNCTION_TOKEN_NOT_ASSIGN_ERROR
+        });
+    }
+}
 
 connection.prototype.getChatRooms = function (options) {
 
