@@ -135,6 +135,7 @@ var CryptoJS = require('crypto-js');
             id: this.id,
             file: this.value,
             apiUrl: opt.apiUrl,
+            url: opt.url || "",
             to: opt.to,
             type: this.type,
             ext: opt.ext || {},
@@ -173,6 +174,7 @@ var CryptoJS = require('crypto-js');
             , file: this.value
             , filename: this.filename
             , apiUrl: opt.apiUrl
+            , url: opt.url || ""
             , to: opt.to
             , type: this.type
             , ext: opt.ext || {}
@@ -208,6 +210,7 @@ var CryptoJS = require('crypto-js');
             , file: this.value
             , filename: this.filename
             , apiUrl: opt.apiUrl
+            , url: opt.url || ""
             , to: opt.to
             , type: this.type
             , ext: opt.ext || {}
@@ -242,6 +245,7 @@ var CryptoJS = require('crypto-js');
             file: this.value,
             filename: this.filename,
             apiUrl: opt.apiUrl,
+            url: opt.url || "",
             to: opt.to,
             type: this.type,
             ext: opt.ext || {},
@@ -267,7 +271,7 @@ var CryptoJS = require('crypto-js');
         this.msg = message;
     };
 
-    _Message.prototype.send = function (conn) {
+    _Message.prototype.send = function (conn, _msgHash) {
         var me = this;
 
         var _send = function (message) {

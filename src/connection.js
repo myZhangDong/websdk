@@ -6,7 +6,6 @@ var _message = _msg._msg;
 var _msgHash = {};
 var Queue = require('./queue').Queue;
 var CryptoJS = require('crypto-js');
-var _ = require('underscore');
 
 var Strophe = window.Strophe
 var isStropheLog;
@@ -444,7 +443,7 @@ var _parseMessageType = function (msginfo) {
 var _handleMessageQueue = function (conn) {
     for (var i in _msgHash) {
         if (_msgHash.hasOwnProperty(i)) {
-            _msgHash[i].send(conn);
+            _msgHash[i].send(conn, _msgHash);
         }
     }
 };
@@ -1893,7 +1892,7 @@ connection.prototype.handleMessage = function (msginfo, ignoreCallback) {
                     id: bodyId
                     , to: msg.from
                 });
-                self.send(deliverMessage.body);
+                self.send(deliverMessage.body, _msgHash);
             }
             
             if (ignoreCallback) {
@@ -2060,10 +2059,10 @@ connection.prototype.send = function (messageSource) {
     var message = messageSource;
     if (message.type === 'txt') {
         if (this.encrypt.type === 'base64') {
-            message = _.clone(messageSource);
+            message = _utils.clone(messageSource);
             message.msg = btoa(message.msg);
         } else if (this.encrypt.type === 'aes') {
-            message = _.clone(messageSource);
+            message = _utils.clone(messageSource);
             var key = CryptoJS.enc.Utf8.parse(this.encrypt.key);
             var iv = CryptoJS.enc.Utf8.parse(this.encrypt.iv);
             var mode = this.encrypt.mode.toLowerCase();
@@ -2113,9 +2112,9 @@ connection.prototype.send = function (messageSource) {
             message.toJid = toJid;
             message.id = message.id || this.getUniqueId();
             _msgHash[message.id] = new _message(message);
-            _msgHash[message.id].send(this);
+            _msgHash[message.id].send(this, _msgHash);
         } else if (typeof message === 'string') {
-            _msgHash[message] && _msgHash[message].send(this);
+            _msgHash[message] && _msgHash[message].send(this, _msgHash);
         }
     }
 };
