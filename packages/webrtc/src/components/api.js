@@ -44,19 +44,19 @@ var _clazz = {
     rtcHandler: null,
 
     events: {
-        '0': 'onReqP2P',
+        '0': 'onReqP2P', //use
         '1': 'onNewCfr',
         '2': 'onDelCfr',
         '3': 'onReqTkt',
 
-        '100': 'onPing',
-        '101': 'onPong',
-        '102': 'onInitC',
-        '103': 'onReqC',
-        '104': 'onAcptC',
-        '105': 'onTcklC',
-        '106': 'onAnsC',
-        '107': 'onTermC',
+        '100': 'onPing', 
+        '101': 'onPong', 
+        '102': 'onInitC', //use
+        '103': 'onReqC', //use
+        '104': 'onAcptC', //use
+        '105': 'onTcklC', //use
+        '106': 'onAnsC', //use
+        '107': 'onTermC', //use
 
         // '200' : 'onEnter',
         // '201' : 'onExit',
@@ -72,7 +72,7 @@ var _clazz = {
         '303': 'onEvUnpub',
         '304': 'onEvMems',
         '204': 'onEvClose',
-        '400': 'onStreamControl',
+        '400': 'onStreamControl', //use
         '401': 'onEvJoin',
 
         'onServerError': 'onServerError'
@@ -249,7 +249,7 @@ var _clazz = {
      * @param controlType
      * @param callback
      */
-    streamControl: function (rt, sessId, rtcId, controlType, callback) {
+    streamControl: function (rt, sessId, rtcId, controlType, stream, callback) {
         _logger.debug("streamControl ...");
 
         var self = this;
@@ -259,7 +259,14 @@ var _clazz = {
                 op: 400
             }
         };
-
+        var enable = (controlType == 0 || controlType == 3)?true:false
+        if(controlType == 0 || controlType == 1){
+            emedia.enableAudioTracks(stream, enable)
+        }else{
+            emedia.enableVideoTracks(stream, enable)
+        }
+        
+        
         sessId && (rtcOptions.data.sessId = sessId);
         rtcId && (rtcOptions.data.rtcId = rtcId);
         (typeof controlType !== 'undefined' &&  controlType != null ) && (rtcOptions.data.controlType = controlType);
@@ -340,8 +347,7 @@ var _clazz = {
      */
     initC: function (rt, streamType, WebRTCId, tkt, sessId, rtcId, pubS, subS, sdp, cands, rtcCfg, WebRTC, callback) {
         _logger.debug("initC ...");
-
-
+        rt.to = rt.to.split('_')[1].split('@')[0]
         var rtcOptions = {
             data: {
                 op: 102
@@ -603,7 +609,8 @@ var _clazz = {
 
         var rtcOptions = {
             data: {
-                op: 107
+                op: 107,
+                reason: reason
             }
         };
 

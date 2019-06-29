@@ -118,18 +118,17 @@ var _Call = {
         Util.extend(mediaStreamConstaints, self.mediaStreamConstaints);
         self.mediaStreamConstaints.video = true;
 
-        this.call(callee, mediaStreamConstaints, accessSid);
+        this.call(callee,self.mediaStreamConstaints, accessSid);
     },
 
     makeVoiceCall: function (callee, accessSid) {
-        console.log('ScareCrow');
         var self = this;
 
         var mediaStreamConstaints = {};
         Util.extend(mediaStreamConstaints, self.mediaStreamConstaints);
         self.mediaStreamConstaints.video = false;
 
-        self.call(callee, mediaStreamConstaints, accessSid);
+        self.call(callee, self.mediaStreamConstaints, accessSid);
     },
 
     acceptCall: function () {
@@ -150,7 +149,7 @@ var _Call = {
         var rt = new RouteTo({
             rtKey: "",
             sid: accessSid,
-
+            to: callee,
             success: function (result) {
                 _logger.debug("iq to server success", result);
             },
@@ -175,6 +174,15 @@ var _Call = {
             });
     },
 
+    controlStream: function (controlType, to) {
+        var rt = new RouteTo({
+            to: to,
+            rtKey: "",
+            rtflag: 0
+        })
+        this.api.streamControl(rt, null, this.rtcId, controlType, this.localStream)
+    },
+
     _onInitC: function (from, options, rtkey, tsxId, fromSid) {
         var self = this;
 
@@ -195,14 +203,14 @@ var _Call = {
 
     _onGotServerP2PConfig: function (from, rtcOptions) {
         var self = this;
-
+        
         if (rtcOptions.result == 0) {
             self._p2pConfig = rtcOptions;
             self._rtcCfg = rtcOptions.rtcCfg;
             self._rtcCfg2 = rtcOptions.rtcCfg2;
 
             self.sessId = rtcOptions.sessId;
-            self.rtcId = "Channel_webIM";
+            self.rtcId = 'RTCID'+rtcOptions.sessId;//"Channel_webIM";
 
             self._rtKey = self._rtkey = rtcOptions.rtKey || rtcOptions.rtkey;
             self._rtFlag = self._rtflag = rtcOptions.rtFlag || rtcOptions.rtflag;
@@ -220,7 +228,6 @@ var _Call = {
 
     switchPattern: function (streamType) {
         var self = this;
-
         (!self._WebRTCCfg) && (self.pattern = new CommonPattern({
             callee: self.callee,
 
@@ -240,9 +247,13 @@ var _Call = {
                     subSVideo: "VIDEO" === streamType,
                     subSAudio: true
                 },
-                onGotLocalStream: self.listener.onGotLocalStream,
+                onGotLocalStream: function(localStream, event){
+                    self.listener.onGotLocalStream(localStream, streamType)
+                    self.localStream = localStream;
+                },
                 onGotRemoteStream: function(remoteStream, event){
                     self.listener.onGotRemoteStream(remoteStream, streamType);
+                    self.remoteStream = remoteStream;
                 },
                 onError: self.listener.onError
             }),
@@ -250,7 +261,6 @@ var _Call = {
             api: self.api,
 
             onAcceptCall: (self.listener && self.listener.onAcceptCall) || function () {
-
             },
             onRinging: (self.listener && self.listener.onRinging) || function () {
 

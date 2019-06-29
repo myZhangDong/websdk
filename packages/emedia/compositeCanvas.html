@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="description" content="xswitch many to many">
+    <meta name="viewport" content="width=device-width, user-scalable=yes, initial-scale=1, maximum-scale=1">
+    <meta itemprop="description" content="sample">
+    <meta itemprop="name" content="\samples">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta id="theme-color" name="theme-color" content="#ffffff">
+
+    <base target="_blank">
+
+    <title>画板-Test</title>
+
+    <style type="text/css">
+        html, body{
+            width: 100%;
+            height: 100%;
+            margin: 0px;
+        }
+
+        .pannel{
+            position: relative;
+
+            width: 100%;
+            height: auto;
+
+            margin-top: 8px;
+
+            float: left;
+
+            width: 859px;
+            height: 483px;
+        }
+
+        .pannel > canvas, #mirrorPannel > canvas{
+            position: absolute;
+            top: 0px;
+            left: 0px;
+        }
+        .pannel video{
+             width: 100%;
+             height: auto;
+        }
+
+        .pannel video{
+            width: 100%;
+            height: auto;
+        }
+
+        .pannel canvas{
+            width: 100%;
+            height: 100%;
+        }
+
+        #mirrorPannel{
+        }
+    </style>
+</head>
+<body>
+    <div id="pannel" class="pannel">
+        <video autoplay loop src="https://turn2.easemob.com/rtc-ws/chrome.webm"></video>
+        <canvas></canvas>
+    </div>
+    <div id="mirrorPannel" class="pannel">
+        <video id="mirrorVideo" autoplay style="display: none"></video>
+        <canvas></canvas>
+    </div>
+
+</body>
+<script src="pannel/dist/pannel.js"></script>
+<script src="./webrtc/dist/EMedia_sdk-dev.js"></script>
+</html>
+
+<script type="text/javascript">
+    var pannel = document.querySelector("#pannel");
+    var videoTag = pannel.querySelector("video");
+    var mirrorPannel = document.querySelector("#mirrorPannel");
+
+    var trackCanvas = pannel.querySelector("canvas");
+    var compositeCanvasTag = mirrorPannel.querySelector("canvas");
+
+    var mouse = new emedia.pannel.Mouse({
+        _target: pannel,
+        _focused: true,
+
+        onMouseEnter: function () {
+            emedia.pannel.logger.info("Mouse enter. keyboard grab");
+        },
+        onMouseExit: function () {
+            mouseTrack.releaseTrigger();
+            emedia.pannel.logger.info("Mouse exit. keyboard ungrab");
+        },
+        onMouseButton: function(trigger, lastTrigger) {
+            emedia.pannel.logger.info("Mouse button", trigger);
+
+            trigger.xy = {
+                x: (trigger.xy.x / trigger.xy.width),
+                y: (trigger.xy.y / trigger.xy.height)
+            }
+            mouseTrack.trigger(trigger);
+
+            if(trigger.isKeydown() && !trigger.isWheelRoll()){
+                mouseTrack.track(trigger.xy);
+            }
+
+            if(trigger.isKeyup()){
+                mouseTrack.releaseTrigger();
+            }
+        },
+        onMouseMove: function(pos, lastTrigger) {
+            //console.log("Mouse move", pos);
+            if(lastTrigger && lastTrigger.isKeydown() && !lastTrigger.isWheelRoll()){
+                pos = {
+                    x: (pos.x / pos.width),
+                    y: (pos.y / pos.height)
+                }
+                mouseTrack.track(pos);
+            }
+        }
+    });
+
+    var mouseTrack = new emedia.pannel.MouseTrack({
+        onMouseTrack: function (position, lastPosition, lastTrigger) {
+            defaultMouseTrack.track(position);
+            mirrorMouseTrack && mirrorMouseTrack.track(position);
+        },
+
+        onMouseTrigger: function (trigger, _lastTrigger) {
+            defaultMouseTrack.trigger(trigger);
+            mirrorMouseTrack && mirrorMouseTrack.trigger(trigger);
+
+            //compositeCanvas.requestFrame();
+            // compositeCanvas.drawImage(videoTag, 0, 0);
+        },
+
+        onReleaseTrigger: function (_lastTrigger) {
+            defaultMouseTrack.releaseTrigger();
+            mirrorMouseTrack && mirrorMouseTrack.releaseTrigger();
+        }
+    });
+
+
+    trackCanvas.width = videoTag.videoWidth;
+    trackCanvas.height = videoTag.videoHeight;
+    var defaultMouseTrack = new emedia.pannel.DefaultMouseTrack({
+        _target: pannel,
+        _canvas: trackCanvas
+    });
+
+    defaultMouseTrack._draw({x: 0, y:0}, 100, 255, 255, 0, 255);
+
+    var mirrorMouseTrack;
+    // var mirrorMouseTrack = new emedia.pannel.DefaultMouseTrack({
+    //     _target: document.querySelector("#mirrorPannel")
+    // });
+
+    // var stream = defaultMouseTrack._canvas.captureStream(25);
+    // document.querySelector("#mirrorVideo").srcObject = stream;
+
+    mouse.grab();
+
+    //defaultMouseTrack._canvas
+    var compositeCanvas = emedia.CompositeCanvas.compositeVideoOverCanvas(compositeCanvasTag, videoTag, trackCanvas)
+        .setCanvas({width: videoTag.videoWidth, height: videoTag.videoHeight})
+        .requestAnimationFrame();
+
+    //compositeCanvas.drawImage(videoTag);
+
+    // var ctx = compositeCanvasTag.getContext("2d");
+    // ctx.globalCompositeOperation = "source-over";
+    //
+    // ctx.drawImage(videoTag, 100, 100, 100, 100);
+    //
+    // ctx.fillStyle = "blue";
+    // ctx.fillRect(10, 10, 100, 100);
+    //
+    // ctx.fillStyle = "red";
+    // ctx.fillRect(50, 50, 100, 100);
+    //
+    // ctx.drawImage(videoTag, 100, 100, 100, 100);
+</script>

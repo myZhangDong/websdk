@@ -2,6 +2,7 @@ node_modules
 .DS_Store
 /.project
 .idea/*
+.git/*
 *.swp
 publish/*
 npm-debug.log

@@ -1,0 +1,1 @@
+require('../../webrtc/src/_adapter/_Adapter.import');

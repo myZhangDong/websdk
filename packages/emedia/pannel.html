@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="description" content="xswitch many to many">
+    <meta name="viewport" content="width=device-width, user-scalable=yes, initial-scale=1, maximum-scale=1">
+    <meta itemprop="description" content="sample">
+    <meta itemprop="name" content="\samples">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta id="theme-color" name="theme-color" content="#ffffff">
+
+    <base target="_blank">
+
+    <title>画板-Test</title>
+
+    <style type="text/css">
+        html, body{
+            width: 100%;
+            height: 100%;
+            margin: 0px;
+        }
+
+        .pannel{
+            position: relative;
+
+            border: 1px solid #61bd0d;
+            width: auto;
+            height: 80%;
+
+            margin: 8px;
+        }
+
+        .pannel video{
+            position: absolute;
+
+            width: 100%;
+            height: 100%;
+        }
+
+        #mirrorPannel{
+            border: 1px solid #bdba70;
+        }
+    </style>
+</head>
+<body>
+    <div id="pannel" class="pannel">
+        <video autoplay loop width="100%" height="100%" src="https://turn2.easemob.com/rtc-ws/chrome.webm"></video>
+    </div>
+    <div id="mirrorPannel" class="pannel">
+        <video id="mirrorVideo" width="100%" height="100%" autoplay></video>
+    </div>
+
+</body>
+<script src="pannel/dist/pannel.js"></script>
+</html>
+
+<script type="text/javascript">
+    var pannel = document.querySelector("#pannel");
+
+    var mouse = new emedia.pannel.Mouse({
+        _target: pannel,
+        _focused: true,
+
+        onMouseEnter: function () {
+            keyboard.grab();
+            emedia.pannel.logger.info("Mouse enter. keyboard grab");
+        },
+        onMouseExit: function () {
+            keyboard.ungrab();
+            mouseTrack.releaseTrigger();
+            emedia.pannel.logger.info("Mouse exit. keyboard ungrab");
+        },
+        onMouseButton: function(trigger, lastTrigger) {
+            emedia.pannel.logger.info("Mouse button", trigger);
+
+            trigger.xy = {
+                x: (trigger.xy.x / trigger.xy.width),
+                y: (trigger.xy.y / trigger.xy.height)
+            }
+            mouseTrack.trigger(trigger);
+
+            if(trigger.isKeydown() && !trigger.isWheelRoll()){
+                mouseTrack.track(trigger.xy);
+            }
+
+            if(trigger.isKeyup()){
+                mouseTrack.releaseTrigger();
+            }
+        },
+        onMouseMove: function(pos, lastTrigger) {
+            //console.log("Mouse move", pos);
+            if(lastTrigger && lastTrigger.isKeydown() && !lastTrigger.isWheelRoll()){
+                pos = {
+                    x: (pos.x / pos.width),
+                    y: (pos.y / pos.height)
+                }
+                mouseTrack.track(pos);
+            }
+        }
+    });
+
+    var keyboard = new emedia.pannel.Keyboard({
+        _target: document,
+        _focused: true,
+
+        onKeyPress: function(key, pressed) {
+            emedia.pannel.logger.log("Key", key, pressed)
+        }
+    });
+
+
+    var mouseTrack = new emedia.pannel.MouseTrack({
+        onMouseTrack: function (position, lastPosition, lastTrigger) {
+            defaultMouseTrack.track(position);
+            mirrorMouseTrack && mirrorMouseTrack.track(position);
+        },
+
+        onMouseTrigger: function (trigger, _lastTrigger) {
+            defaultMouseTrack.trigger(trigger);
+            mirrorMouseTrack && mirrorMouseTrack.trigger(trigger);
+        },
+
+        onReleaseTrigger: function (_lastTrigger) {
+            defaultMouseTrack.releaseTrigger();
+            mirrorMouseTrack && mirrorMouseTrack.releaseTrigger();
+        }
+    });
+    var defaultMouseTrack = new emedia.pannel.DefaultMouseTrack({
+        _target: pannel
+    });
+    var mirrorMouseTrack;
+    // var mirrorMouseTrack = new emedia.pannel.DefaultMouseTrack({
+    //     _target: document.querySelector("#mirrorPannel")
+    // });
+
+    var stream = defaultMouseTrack._canvas.captureStream(25);
+    document.querySelector("#mirrorVideo").srcObject = stream;
+
+    //keyboard.grab();
+    mouse.grab();
+</script>
+
+<script type="text/javascript">
+    var trackBuffer = new emedia.pannel.TrackBuffer({
+        mouseTrackBufferSize: 20,
+        _compRadio: 0.125,
+
+        _toString: function () {
+            var tmp1 = [];
+
+            var unread = this._getUnread();
+            for(var i = 0; unread && i < unread.length; i++){
+                tmp1.push(unread[i].sn);
+            }
+            // for(var i = tmp1.length; i < this.mouseTrackBufferSize; i++){
+            //     tmp1.push(" ");
+            // }
+
+            var tmp2 = [];
+            for(var i = 0; i < this._mouseTrackBuffer.length; i++){
+                tmp2.push(this._mouseTrackBuffer[i] && this._mouseTrackBuffer[i].sn);
+            }
+            return emedia.pannel.util.list("sn:", this._sn, " r:", this._readIndex, " b:", this._beginIndex, " e:", this._endIndex,
+                " unread:", tmp1.join(" "),
+                "\r\nbuffer:", tmp2.join(" ")).join("");
+        }
+    });
+
+
+    emedia.pannel.logger.info(emedia.pannel.util.extend({}, trackBuffer));
+
+    for(var i = 0; i < 70; i++){
+        trackBuffer.put({});
+        emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+    }
+
+    emedia.pannel.logger.info(trackBuffer.getUnread(3));
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+    emedia.pannel.logger.info(trackBuffer.getUnread());
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+    emedia.pannel.logger.info(trackBuffer.getUnread());
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+
+    for(var i = 0; i < 23; i++){
+        trackBuffer.put({});
+        emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+    }
+
+    emedia.pannel.logger.info(trackBuffer.getUnread(3));
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+
+
+    trackBuffer.put({});
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+
+    trackBuffer.put({});
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+
+    trackBuffer.put({});
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+
+    trackBuffer.put({});
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+
+    for(var i = 0; i < 4; i++){
+
+    }
+
+    trackBuffer.put({});
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+
+    trackBuffer.put({});
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+
+    trackBuffer.put({});
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+
+    for(var i = 0; i < 2; i++){
+        trackBuffer.put({});
+        emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+    }
+
+
+
+    for(var i = 0; i < 70; i++){
+        trackBuffer.put({});
+        emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+    }
+
+
+    emedia.pannel.logger.info(trackBuffer.getUnread(5));
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+
+
+    trackBuffer.clearRead(138);
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+
+    trackBuffer.clearRead(143);
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+
+    trackBuffer.clearRead(153);
+    emedia.pannel.logger.info( emedia.pannel.util.extend({}, trackBuffer));
+</script>
+
+
+<!--<script type="text/javascript">-->
+    <!--var canvas = document.createElement("canvas");-->
+    <!--document.body.appendChild(canvas);-->
+    <!--canvas.style.cssText = "position: absolute; background: red; width: 100%; height: 100%";-->
+
+    <!--canvas.width = 640;-->
+    <!--canvas.height = 480;-->
+
+    <!--canvas.getContext("2d");-->
+
+    <!--canvas.captureStream(25);-->
+<!--</script>-->

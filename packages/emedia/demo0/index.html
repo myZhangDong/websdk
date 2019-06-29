@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+
+    <meta charset="utf-8">
+    <meta name="description" content="xswitch many to many">
+    <meta name="viewport" content="width=device-width, user-scalable=yes, initial-scale=1, maximum-scale=1">
+    <meta itemprop="description" content="sample">
+    <meta itemprop="name" content="\samples">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta id="theme-color" name="theme-color" content="#ffffff">
+
+    <base target="_blank">
+
+    <title>EMedia</title>
+
+
+    <link rel="stylesheet" href="../demo/stylesheet/style.css" />
+    <link rel="stylesheet" href="../demo/stylesheet/demo.css" />
+
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+
+    <style type="text/css">
+        .header .div_bar {
+            display: inline-block;
+            width: 100%;
+            margin: auto;
+            padding: 2px 0px;
+            max-width: 871px;
+        }
+        .div_bar span{
+            margin: 2px 0px 1px 7px;
+        }
+        .div_bar span label{
+            display: block;
+        }
+        input[type='submit'] {
+            height: 43px;
+            width: 80px;
+
+            font-size: 18px;
+        }
+        .div_bar select{
+            width: 350px;
+        }
+
+        #member_select, #role_select{
+            height: 130px;
+        }
+
+        .div_bar span > input[type ='text']{
+            width: 330px;
+        }
+
+        .div_bar:last-child{
+            text-align: center;
+        }
+
+        p.event.warn{
+            background-color: #bdba70;
+        }
+
+        select { color: red; }
+        option:not(:checked) { color: black; }
+    </style>
+
+</head>
+
+<body>
+
+<div id="setting" class="animate join header">
+    <h1></h1>
+    <h2 style="display: none;"></h2>
+    <div class="div_bar">
+        <span>
+            <label for="id_name">MemberName</label>
+            <input type="text" id="id_name" value="easemob-demo#chatdemoui_yss000"/>
+        </span>
+        <span>
+            <label for="id_token">MemberToken</label>
+            <input type="text" id="id_token" value="easemob-demo#chatdemoui_yss000-token"/>
+        </span>
+
+        <span>
+            <label>&nbsp;</label>
+            <input type="submit" id="btn_setId" value="Set">
+        </span>
+    </div>
+
+    <div class="div_bar">
+        <span>
+            <label for="confrType_select">ConfrType</label>
+            <select id="confrType_select">
+                <option value="10">10:COMMUNICATION</option>
+                <option value="11">11:COMMUNICATION_MIX</option>
+                <option value="12" selected>12:LIVE</option>
+                <option value="13">13:P2P</option>
+                <option value="14">14:INTERCOMM</option>
+            </select>
+        </span>
+        <span>
+            <label for="setpassword">Password</label>
+            <input type="text" id="setpassword" value="password123"/>
+        </span>
+
+        <span>
+            <label>&nbsp;</label>
+            <input type="submit" id="btn_crtConfr" value="创建加入">
+        </span>
+    </div>
+
+    <div class="div_bar">
+        <span>
+            <label for="confrId">ConfrId</label>
+            <input type="text" id="confrId" />
+        </span>
+        <span>
+            <label for="password">Password</label>
+            <input type="text" id="password" />
+        </span>
+
+        <span>
+            <label>&nbsp;</label>
+            <input type="submit" id="btn_reqTkt" value="申请Ticket">
+        </span>
+    </div>
+
+    <div class="div_bar" style="display: none">
+        <span>
+            <label for="member_select">与会人员</label>
+            <select id="member_select" multiple>
+            </select>
+        </span>
+        <span>
+            <label for="role_select">人员角色</label>
+            <select id="role_select" multiple>
+                <option value="7">7:ADMIN</option>
+                <option value="3">3:TALKER</option>
+                <option value="1">1:AUDIENCE</option>
+            </select>
+        </span>
+
+        <span>
+            <label>&nbsp;</label>
+        </span>
+    </div>
+
+    <div class="div_bar">
+        <p class="submit">
+            <input type="submit" id="btn_enter" value="加入会议">
+            <input type="submit" id="btn_pub_av" value="音视频">
+            <input type="submit" id="btn_pub_video" value="仅视频">
+            <input type="submit" id="btn_pub_audio" value="仅音频">
+            <input type="submit" id="btn_shareDesktop" value="共享桌面">
+            <input type="submit" id="btn_hangup" value="挂&nbsp;&nbsp;&nbsp;&nbsp;断">
+            <input type="submit" id="btn_discand"  style="display: none" value="解散会议">
+            <input type="submit" id="btn_report" value="导出日志">
+        </p>
+    </div>
+    <div class="link" id="div_links"><p></p></div>
+    <div class="event" id="div_events"><p></p></div>
+</div>
+
+<!--<div id="float_div" class="float_div">-->
+    <!--<span id="client"></span>-->
+    <!--<span id="screen"></span>-->
+    <!--<span id="document"></span>-->
+    <!--<span id="self"></span>-->
+<!--</div>-->
+
+<div id="container">
+    <div id="participants"></div>
+</div>
+
+<!--
+<img src="http://pic4.nipic.com/20091217/3885730_124701000519_2.jpg" class="captureImg">
+-->
+
+<!--webrtc-->
+<script src="../webrtc/dist/EMedia_sdk-dev.js"></script>
+
+<!--demo javascript-->
+<script src="javascript/dist/demo-dev.js"></script>
+
+</body>
+</html>
