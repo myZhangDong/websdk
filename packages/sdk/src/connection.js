@@ -3056,9 +3056,9 @@ connection.prototype.clear = function () {
     }
 };
 
-var _fetchMessages = function(options) {
-    var conn = this,
-        token = options.accessToken || this.context.accessToken
+var _fetchMessages = function(options,conn) {
+
+    var token = options.accessToken || conn.context.accessToken
     
     if (!_utils.isCanSetRequestHeader) {
         conn.onError({
@@ -3068,9 +3068,9 @@ var _fetchMessages = function(options) {
     }
 
     if (token) {
-        var apiUrl = this.apiUrl;
-        var appName = this.context.appName;
-        var orgName = this.context.orgName;
+        var apiUrl = conn.apiUrl;
+        var appName = conn.context.appName;
+        var orgName = conn.context.orgName;
 
         if (!appName || !orgName) {
             conn.onError({
@@ -3139,7 +3139,7 @@ var _fetchMessages = function(options) {
             }
         };
 
-        var userId = this.context.userId;    
+        var userId = conn.context.userId;    
         var start = -1
         
         // 无历史消息或者缓存消息足够不再加载
@@ -3183,6 +3183,7 @@ var _fetchMessages = function(options) {
  * 获取对话历史消息
  * @param {Object} options
  * @param {String} options.queue   - 对方用户名Id
+ * @param {String} options.count   拉取条数
  * @param {Function} options.success
  * @param {Funciton} options.fail
  */
@@ -3206,12 +3207,12 @@ connection.prototype.fetchHistoryMessages = function(options) {
             success: function(data) {
                 var length = data.msgs.length
                 if (length >= count || data.is_last) {
-                    options.success(_utils.reverse(data.msgs.splice(0, count)))
+                    options.success&&options.success(_utils.reverse(data.msgs.splice(0, count)))
                 } else {
                     _readCacheMessages()
                 }
             }
-        })
+        }, conn)
     }
     _readCacheMessages()
 };
